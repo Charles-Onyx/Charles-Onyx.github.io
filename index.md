@@ -20,7 +20,8 @@ layout: default
     <i class="fas fa-pen-fancy" style="color: var(--color-accent);"></i> 最新文章
   </h2>
   <ul class="post-list">
-    {% for post in paginator.posts %}
+    {% assign sorted_posts = site.posts | sort: "date" | reverse %}
+    {% for post in sorted_posts %}
     <li class="post-card">
       <a href="{{ post.url | relative_url }}" class="post-card-title">{{ post.title | escape }}</a>
       <div class="post-card-meta">
@@ -45,23 +46,4 @@ layout: default
     </li>
     {% endfor %}
   </ul>
-
-  {% if paginator.total_pages > 1 %}
-  <nav class="pagination">
-    {% if paginator.previous_page %}
-    <a href="{{ paginator.previous_page_path | relative_url }}" class="page-link">
-      <i class="fas fa-chevron-left"></i>
-    </a>
-    {% endif %}
-    {% for page in (1..paginator.total_pages) %}
-    <a href="{% if page == 1 %}{{ '/' | relative_url }}{% else %}{{ site.paginate_path | relative_url | replace: ':num', page }}{% endif %}" 
-       class="page-link{% if page == paginator.page %} active{% endif %}">{{ page }}</a>
-    {% endfor %}
-    {% if paginator.next_page %}
-    <a href="{{ paginator.next_page_path | relative_url }}" class="page-link">
-      <i class="fas fa-chevron-right"></i>
-    </a>
-    {% endif %}
-  </nav>
-  {% endif %}
 </section>

@@ -18,31 +18,15 @@ markdown: kramdown
 kramdown:
   input: GFM
   syntax_highlighter: rouge
-  syntax_highlighter_opts:
-    css_class: highlight
-    span:
-      line_numbers: false
-    block:
-      line_numbers: true
-      start_line: 1
 
 # Permalink
 permalink: /:year/:month/:title/
-paginate: 10
-paginate_path: "/page/:num/"
 
-# Plugins
+# Plugins - only those supported by GitHub Pages
 plugins:
-  - jekyll-paginate
   - jekyll-seo-tag
   - jekyll-sitemap
   - jekyll-feed
-
-# Collections
-collections:
-  projects:
-    output: true
-    permalink: /projects/:path/
 
 # Defaults
 defaults:
@@ -52,14 +36,6 @@ defaults:
     values:
       layout: "post"
       author: "Charles-Onyx"
-      lang: "zh-CN"
-      comments: true
-
-  - scope:
-      path: ""
-      type: "projects"
-    values:
-      layout: "page"
 
   - scope:
       path: ""

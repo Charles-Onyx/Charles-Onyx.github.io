@@ -1,4 +1,4 @@
-﻿# 林煜晨的技术博客 | Charles-Onyx Tech Blog
+﻿# Charles的技术博客 | Charles-Onyx Tech Blog
 
 [![GitHub Pages](https://img.shields.io/badge/GitHub%20Pages-Live-blue?logo=github)](https://Charles-Onyx.github.io)
 [![Jekyll](https://img.shields.io/badge/Jekyll-4.x-red?logo=jekyll)](https://jekyllrb.com)

@@ -6,15 +6,15 @@ categories: ["后端开发", "架构设计"]
 tags: [Java, Spring Boot, Redis, RocketMQ, 高并发, IoT]
 ---
 
-在智慧农业场景中，一套物联网平台需要同时接入成千上万个传感器设备，每个设备以秒级频率上报温度、湿度、光照、土壤 pH 值等监测数据。如何设计一套能够**稳定处理海量并发写入**的数据接入层，是后端架构师面临的第一道考题。
+在物联网场景中，一套数据平台需要同时接入成千上万个传感器设备，每个设备以秒级频率上报监测数据。如何设计一套能够**稳定处理海量并发写入**的数据接入层，是后端架构师面临的第一道考题。
 
 ## 一、业务背景与挑战
 
-以我参与开发的智慧农业大数据管理平台为例，系统需要面向现代大型农场提供设备集控与环境监测能力。实际生产环境中，一个中型农场部署的传感器节点可达 5000+，单节点每秒上报 1-2 条数据，峰值 QPS 轻松突破 10000。
+以某大型物联网数据管理平台为例，系统需要面向现代园区提供设备集控与环境监测能力。实际生产环境中，一个中型园区部署的传感器节点可达 5000+，单节点每秒上报 1-2 条数据，峰值 QPS 轻松突破 10000。
 
 **核心挑战**：
 1. **写入洪峰**：设备上报集中在整点前后，存在明显的流量尖峰
-2. **数据完整性**：农业数据具备时序特征，丢失一条可能导致分析偏差
+2. **数据完整性**：监测数据具备时序特征，丢失一条可能导致分析偏差
 3. **后端稳定性**：数据库直接承载写入压力极易造成连接池耗尽
 
 ## 二、架构设计：三层削峰写入模型
@@ -30,9 +30,9 @@ tags: [Java, Spring Boot, Redis, RocketMQ, 高并发, IoT]
 接收网关基于 Netty 构建，负责维持与传感器设备的长连接：
 
 ```java
-// 网关核心：基于 Netty 的异步非阻塞接收
 EventLoopGroup bossGroup = new NioEventLoopGroup(1);
-EventLoopGroup workerGroup = new NioEventLoopGroup(Runtime.getRuntime().availableProcessors() * 2);
+EventLoopGroup workerGroup = new NioEventLoopGroup(
+    Runtime.getRuntime().availableProcessors() * 2);
 
 ServerBootstrap bootstrap = new ServerBootstrap();
 bootstrap.group(bossGroup, workerGroup)
@@ -42,8 +42,8 @@ bootstrap.group(bossGroup, workerGroup)
         protected void initChannel(SocketChannel ch) {
             ch.pipeline()
                 .addLast(new IdleStateHandler(60, 0, 0))
-                .addLast(new SensorDataDecoder())    // 自定义协议解码
-                .addLast(new DataProcessHandler());   // 业务处理
+                .addLast(new SensorDataDecoder())
+                .addLast(new DataProcessHandler());
         }
     })
     .option(ChannelOption.SO_BACKLOG, 1024)
@@ -52,8 +52,8 @@ bootstrap.group(bossGroup, workerGroup)
 ```
 
 关键优化点：
-- 使用 `SO_BACKLOG = 1024` 应对瞬时并发连接
-- TCP_NODELAY 禁用了 Nagle 算法，减少网络延迟
+- `SO_BACKLOG = 1024` 应对瞬时并发连接
+- `TCP_NODELAY` 禁用了 Nagle 算法，减少网络延迟
 - 工作线程数设为 CPU 核心数的 2 倍，避免上下文频繁切换
 
 ### 2.2 Redis 缓存缓冲层
@@ -61,9 +61,7 @@ bootstrap.group(bossGroup, workerGroup)
 每条数据先进入 **Redis List**，而非直接落入数据库：
 
 ```java
-// 接收网关 -> Redis List
 public void cacheSensorData(SensorData data) {
-    // 按设备 ID 分片，避免单队列过大
     String queueKey = "sensor:queue:" + (data.getDeviceId() % SHARD_COUNT);
     redisTemplate.opsForList()
         .rightPush(queueKey, JSON.toJSONString(data));
@@ -73,7 +71,7 @@ public void cacheSensorData(SensorData data) {
 为什么先走 Redis：
 - Redis 单机可达 10万+ QPS 的写入能力，天然抗住洪峰
 - List 的 LPUSH/RPUSH 操作复杂度 O(1)，写入几乎无延迟
-- 削峰填谷：消费者按自身节奏从队列拉取，数据库不会被打死
+- 消费者按自身节奏从队列拉取，数据库不会被打死
 
 ### 2.3 RocketMQ 消息队列
 
@@ -83,19 +81,14 @@ Redis 作为一级缓冲可以暂存千万级数据，但我们还需要**可靠
 @Component
 public class SensorDataProducer {
 
-    @Autowired
-    private RocketMQTemplate rocketMQTemplate;
-
     public void sendToMQ(List<SensorData> batch) {
         Message<List<SensorData>> msg = MessageBuilder
             .withPayload(batch)
             .build();
-        // 同步发送，确保到达
         SendResult result = rocketMQTemplate.syncSend(
             "sensor-data-topic", msg, 3000);
         if (result.getSendStatus() != SendStatus.SEND_OK) {
             log.error("MQ send failed: {}", result);
-            // 补偿：写入本地文件或备用队列
         }
     }
 }
@@ -129,11 +122,9 @@ public class SensorDataConsumer {
     }
 
     private void flushBatch() {
-        // 使用 JDBC batch 替代逐条 INSERT
         jdbcTemplate.batchUpdate(
             "INSERT INTO sensor_data (device_id, type, value, ts) VALUES (?, ?, ?, ?)",
-            batch,
-            BATCH_SIZE,
+            batch, BATCH_SIZE,
             (ps, data) -> {
                 ps.setLong(1, data.getDeviceId());
                 ps.setString(2, data.getType());
@@ -149,7 +140,7 @@ public class SensorDataConsumer {
 
 ## 三、压测效果
 
-使用 JMeter 模拟 2000 个设备并发上报，每个设备每秒发送 2 条数据：
+使用 JMeter 模拟 2000 个设备并发上报：
 
 | 指标 | 接入 Redis | 直接写 MySQL |
 |------|-----------|-------------|
@@ -159,7 +150,7 @@ public class SensorDataConsumer {
 
 ## 四、踩坑记录
 
-1. **Redis 内存飙升**：未设置 TTL 的 List 持续增长，差点撑爆内存。解决方案：设置队列上限 + 定时清理策略。
+1. **Redis 内存飙升**：未设置 TTL 的 List 持续增长。解决方案：设置队列上限 + 定时清理策略。
 
 2. **Netty 内存泄漏**：ByteBuf 未正确释放导致堆外内存泄漏。通过 `Netty.leakDetectionLevel = advanced` 定位并修复。
 

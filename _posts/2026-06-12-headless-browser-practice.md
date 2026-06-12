@@ -6,9 +6,9 @@ categories: ["爬虫", "数据工程"]
 tags: [Headless, Playwright, 爬虫, 反爬, 内存优化]
 ---
 
-在智慧农业项目中，我们需要采集外部气象数据与农产品市场行情信息。然而，现在的农业数据网站普遍采用了前端动态渲染（SPA）、反爬策略和复杂交互逻辑。传统的 `requests` + `BeautifulSoup` 方案在这些场景下几乎寸步难行。
+在数据采集场景中，我们需要获取外部平台的气象数据与市场行情信息。然而，现在的数据网站普遍采用了前端动态渲染（SPA）、反爬策略和复杂交互逻辑。传统的 `requests` + `BeautifulSoup` 方案在这些场景下几乎寸步难行。
 
-本文分享我们如何基于 Headless 浏览器构建了一套**稳定、可控**的农业语料采集 Pipeline。
+本文分享如何基于 Headless 浏览器构建了一套**稳定、可控**的数据采集 Pipeline。
 
 ## 一、为什么需要 Headless 浏览器？
 
@@ -23,27 +23,24 @@ tags: [Headless, Playwright, 爬虫, 反爬, 内存优化]
 
 ## 二、技术选型：为什么选择 Playwright
 
-对比了 Puppeteer、Selenium 和 Playwright 后，我们最终选择了 Playwright，原因有三：
+对比了 Puppeteer、Selenium 和 Playwright 后，我们最终选择了 Playwright：
 
 1. **多浏览器支持**：一套 API 兼容 Chromium、Firefox、WebKit
 2. **自动等待机制**：内置的 Auto-wait 大幅减少了 `sleep` 调用
 3. **性能更好**：相比 Puppeteer 约 20-30% 的性能优势
-4. **原生支持 Python 和 Java**：与我们后端团队的技术栈匹配
+4. **API 设计更简洁**：链式调用、上下文管理更优雅
 
 ```python
-# Playwright vs Puppeteer 的代码对比（Python 示例）
 from playwright.sync_api import sync_playwright
 
 with sync_playwright() as p:
     browser = p.chromium.launch(headless=True)
     page = browser.new_page()
-    page.goto("https://example-agri-data.com")
+    page.goto("https://example-data-source.com")
     
-    # Playwright 自动等待元素可见
     page.click(".search-button")
     page.wait_for_selector(".data-table")
     
-    # 获取渲染后的完整 HTML
     content = page.content()
     browser.close()
 ```
@@ -80,7 +77,6 @@ class BrowserPool:
                 ]
             )
         else:
-            # 等待可用实例
             return self._wait_for_available()
         
         self.in_use.add(browser)
@@ -88,7 +84,6 @@ class BrowserPool:
     
     def release(self, browser: Browser):
         self.in_use.discard(browser)
-        # 刷新上下文，清除 Cookie/缓存
         browser.contexts[0].clear_cookies()
         self.available.append(browser)
 ```
@@ -111,20 +106,16 @@ def create_optimized_page(browser):
         user_agent='Mozilla/5.0 ...'
     )
     
-    # 拦截不必要的资源加载
     page = context.new_page()
     page.route("**/*.{png,jpg,jpeg,gif,svg,woff,woff2}",
                lambda route: route.abort())
     
-    # 定期清理页面
     page.on("load", lambda: _cleanup_page_resources(page))
     return page
 
 def _cleanup_page_resources(page):
     page.evaluate("""() => {
-        // 强制触发垃圾回收
         if (window.gc) window.gc();
-        // 清理 DOM 引用
         document.querySelectorAll('img').forEach(el => {
             el.src = '';
         });
@@ -143,22 +134,16 @@ def _cleanup_page_resources(page):
 
 ### 4.1 应对检测
 
-许多农业数据网站使用了 Headless 浏览器检测脚本。我们通过以下方式绕过：
+许多网站使用了 Headless 浏览器检测脚本，我们可以通过以下方式绕过：
 
 ```python
-# 注入反检测脚本
 page.add_init_script("""
-    // 覆盖 navigator.webdriver 属性
     Object.defineProperty(navigator, 'webdriver', {
         get: () => undefined
     });
-    
-    // 模拟真实的 plugins 数组
     Object.defineProperty(navigator, 'plugins', {
         get: () => [1, 2, 3, 4, 5]
     });
-    
-    // 覆盖 chrome 对象
     window.chrome = {
         runtime: {},
         loadTimes: function() {},
@@ -185,7 +170,7 @@ class RateLimiter:
         self.last_request[domain] = time.time()
 ```
 
-加入随机抖动（3-5 秒间隔），模拟人类浏览行为，使得反爬系统难以建立请求特征模型。
+加入随机抖动（3-5 秒间隔），使得反爬系统难以建立请求特征模型。
 
 ## 五、部署与运维
 
@@ -197,8 +182,6 @@ FROM mcr.microsoft.com/playwright/python:v1.40.0-focal
 WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
-
-# 安装系统依赖
 RUN playwright install-deps chromium
 
 COPY . .

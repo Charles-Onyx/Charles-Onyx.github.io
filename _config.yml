@@ -1,11 +1,10 @@
 ﻿# Site settings
-title: "林煜晨的技术博客"
+title: "技术博客"
 tagline: "Backend Engineering · System Design · AI Integration"
 description: >
   专注于 Java/Spring Boot 后端开发、分布式系统设计、高性能架构与 AI 应用集成。
   分享实际项目中的技术实践与深度思考。
-author: "Charles-Onyx (林煜晨)"
-email: "hangover050419@gmail.com"
+author: "Charles-Onyx"
 lang: "zh-CN"
 
 # SEO

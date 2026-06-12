@@ -1,0 +1,21 @@
+﻿<footer class="site-footer">
+  <div class="container">
+    <div class="footer-content">
+      <div class="footer-info">
+        <p>&copy; {{ site.time | date: "%Y" }} <a href="https://github.com/{{ site.github_username }}">{{ site.author }}</a>. All rights reserved.</p>
+        <p class="footer-tagline">{{ site.tagline }}</p>
+      </div>
+      <div class="footer-links">
+        <a href="https://github.com/{{ site.github_username }}" target="_blank" rel="noopener" aria-label="GitHub">
+          <i class="fab fa-github"></i>
+        </a>
+        <a href="mailto:{{ site.email }}" aria-label="Email">
+          <i class="fas fa-envelope"></i>
+        </a>
+        <a href="{{ '/feed.xml' | relative_url }}" aria-label="RSS Feed">
+          <i class="fas fa-rss"></i>
+        </a>
+      </div>
+    </div>
+  </div>
+</footer>

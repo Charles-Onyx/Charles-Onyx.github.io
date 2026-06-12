@@ -1,0 +1,78 @@
+﻿# Site settings
+title: "林煜晨的技术博客"
+tagline: "Backend Engineering · System Design · AI Integration"
+description: >
+  专注于 Java/Spring Boot 后端开发、分布式系统设计、高性能架构与 AI 应用集成。
+  分享实际项目中的技术实践与深度思考。
+author: "Charles-Onyx (林煜晨)"
+email: "hangover050419@gmail.com"
+lang: "zh-CN"
+
+# SEO
+github_username: Charles-Onyx
+url: "https://Charles-Onyx.github.io"
+baseurl: ""
+
+# Build settings
+markdown: kramdown
+kramdown:
+  input: GFM
+  syntax_highlighter: rouge
+  syntax_highlighter_opts:
+    css_class: highlight
+    span:
+      line_numbers: false
+    block:
+      line_numbers: true
+      start_line: 1
+
+# Permalink
+permalink: /:year/:month/:title/
+paginate: 10
+paginate_path: "/page/:num/"
+
+# Plugins
+plugins:
+  - jekyll-paginate
+  - jekyll-seo-tag
+  - jekyll-sitemap
+  - jekyll-feed
+
+# Collections
+collections:
+  projects:
+    output: true
+    permalink: /projects/:path/
+
+# Defaults
+defaults:
+  - scope:
+      path: ""
+      type: "posts"
+    values:
+      layout: "post"
+      author: "Charles-Onyx"
+      lang: "zh-CN"
+      comments: true
+
+  - scope:
+      path: ""
+      type: "projects"
+    values:
+      layout: "page"
+
+  - scope:
+      path: ""
+    values:
+      layout: "default"
+
+# Navigation
+nav:
+  - title: "首页"
+    url: "/"
+  - title: "归档"
+    url: "/archive/"
+  - title: "关于"
+    url: "/about/"
+  - title: "项目"
+    url: "/projects/"
